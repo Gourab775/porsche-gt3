@@ -2,6 +2,7 @@
   "name": "vary-porsche-gt3-rs",
   "private": true,
   "version": "1.0.0",
+  "description": "Vary Porsche GT3 RS — cinematic scroll-driven 3D showcase built with React, Three.js, React Three Fiber and Drei. High-fidelity GLB with DRACO, damped camera choreography and responsive editorial panels.",
   "type": "module",
   "scripts": {
     "dev": "vite",
