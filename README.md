@@ -1,6 +1,6 @@
 # Vary — Porsche GT3 RS 3D Showcase
 
-Live Demo: https://gourab775.github.io/vary-porsche-gt3
+Live Demo: https://vary-porsche-gt3.vercel.app
 
 Category: Automotive / Interactive 3D Experience
 
@@ -73,7 +73,7 @@ npm run build
 
 Deploy `dist/` to any static host:
 
-- **GitHub Pages** — Publish `dist/` via `gh-pages` or Actions workflow. Live at https://gourab775.github.io/vary-porsche-gt3
+- **GitHub Pages** — Publish `dist/` via `gh-pages` or Actions workflow. Live at https://vary-porsche-gt3.vercel.app
 - **Vercel / Netlify / EdgeOne Pages** — Connect repo, build command `npm run build`, output `dist`
 - **S3 + CloudFront / CDN** — Upload `dist/` and `porsche_gt3_rs.glb` (ensure correct MIME and range requests for large GLB)
 
