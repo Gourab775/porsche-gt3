@@ -13,6 +13,23 @@ const GROUND_Y = -1.05;
 const TIRE_CONTACT_LIFT = 0.12;
 const BASE_RIDE_HEIGHT = 0.055;
 
+// ---- Car position thresholds & default poses for GUI (har section ke liye) ----
+const CAR_THRESHOLDS = [0, 0.18, 0.36, 0.56, 0.74, 0.88, 1.0];
+const DEFAULT_CAR_POSES = [
+  // hero  (t=0)
+  { id: 'hero', posX: 0.65, posY: 0.055, posZ: 0, rotX: -0.02, rotY: 0.314, rotZ: 0, scale: 1.0 },
+  // performance (t=0.18)
+  { id: 'performance', posX: -0.15, posY: 0.067, posZ: 0, rotX: -0.02, rotY: 0.691, rotZ: 0, scale: 1.0 },
+  // aero (t=0.36)
+  { id: 'aero', posX: 0.4, posY: 0.095, posZ: 0, rotX: -0.02, rotY: 1.445, rotZ: 0, scale: 1.12 },
+  // track (t=0.56)
+  { id: 'track', posX: -0.25, posY: 0.135, posZ: 0.18, rotX: -0.02, rotY: 3.895, rotZ: 0, scale: 1.2 },
+  // detail (t=0.74)
+  { id: 'detail', posX: -0.2, posY: 0.145, posZ: 0.14, rotX: 0.01, rotY: 4.585, rotZ: 0, scale: 1.25 },
+  // cta start (t=0.88)
+  { id: 'cta', posX: 0.02, posY: 0.065, posZ: 0.26, rotX: 0.06, rotY: 5.529, rotZ: 0, scale: 1.5 },
+];
+
 const sections = [
   {
     id: 'hero',
@@ -148,10 +165,12 @@ function LoadingScreen() {
   );
 }
 
-function PorscheModel({ scrollProgress }) {
+function PorscheModel({ scrollProgress, carPoses }) {
   const groupRef = useRef(null);
   const sweepLightRef = useRef(null);
   const [model, setModel] = useState(null);
+  const carPosesRef = useRef(carPoses);
+  useEffect(() => { carPosesRef.current = carPoses; }, [carPoses]);
 
   useEffect(() => {
     const dracoLoader = new DRACOLoader();
@@ -202,6 +221,7 @@ function PorscheModel({ scrollProgress }) {
     const t = scrollProgress.current;
     const elapsed = state.clock.elapsedTime;
     const heroOscillation = (Math.sin(elapsed * 0.9) + 1) * 0.012;
+    const poses = carPosesRef.current;
 
     let rotX = -0.02;
     let rotY = Math.PI * 0.12;
@@ -211,50 +231,46 @@ function PorscheModel({ scrollProgress }) {
     let posZ = 0;
     let scale = 1;
 
-    if (t < 0.18) {
-      const local = smoothstep(t / 0.18);
-      rotY = Math.PI * (0.1 + local * 0.12);
-      posY = BASE_RIDE_HEIGHT + heroOscillation;
-      posX = 0.65;
-      scale = 1.0;
-    } else if (t < 0.36) {
-      const local = smoothstep((t - 0.18) / 0.18);
-      rotY = Math.PI * (0.22 + local * 0.24);
-      posX = -0.15 + local * 0.55;
-      posY = BASE_RIDE_HEIGHT + 0.012 + Math.sin(elapsed * 1.4) * 0.014;
-      posZ = local * 0.28;
-      scale = 1 + local * 0.12;
-    } else if (t < 0.56) {
-      const local = smoothstep((t - 0.36) / 0.2);
-      rotY = Math.PI * (0.46 + local * 0.78);
-      posX = 0.4 - local * 0.65;
-      posY = BASE_RIDE_HEIGHT + 0.04 + local * 0.07;
-      scale = 1.12 + local * 0.08;
-    } else if (t < 0.74) {
-      const local = smoothstep((t - 0.56) / 0.18);
-      const shake = local * 0.01;
-      rotY = Math.PI * (1.24 + local * 0.22);
-      rotX = -0.02 + local * 0.03;
-      posX = -0.25 + Math.sin(elapsed * 30) * shake;
-      posY = BASE_RIDE_HEIGHT + 0.08 + Math.cos(elapsed * 24) * shake;
-      posZ = 0.18 + Math.sin(elapsed * 17) * shake * 0.5;
-      scale = 1.2 + local * 0.05;
-    } else if (t < 0.88) {
-      const local = smoothstep((t - 0.74) / 0.14);
-      rotY = Math.PI * (1.46 + local * 0.3);
-      rotX = 0.01 + local * 0.05;
-      posX = -0.2 + local * 0.22;
-      posY = BASE_RIDE_HEIGHT + 0.09 - local * 0.08;
-      posZ = 0.14 + local * 0.12;
-      scale = 1.25 + local * 0.1;
+    // ---- GUI-driven automatic movement: lerp between section poses ----
+    const thresholds = CAR_THRESHOLDS;
+    let seg = 0;
+    for (let i = 0; i < thresholds.length - 1; i += 1) {
+      if (t >= thresholds[i] && t < thresholds[i + 1]) { seg = i; break; }
+      if (t >= thresholds[thresholds.length - 1]) seg = thresholds.length - 2;
+    }
+    if (t >= 0.99) seg = thresholds.length - 2;
+    const t0 = thresholds[seg];
+    const t1 = thresholds[seg + 1];
+    const local = t1 > t0 ? smoothstep((t - t0) / (t1 - t0)) : 0;
+    const start = poses[seg] || poses[0];
+    const end = poses[Math.min(seg + 1, poses.length - 1)] || start;
+
+    // for last segment (cta) keep original delta-based motion so car doesn't freeze
+    if (seg === 5) {
+      const localCta = smoothstep((t - 0.88) / 0.12);
+      rotY = THREE.MathUtils.lerp(start.rotY, start.rotY + Math.PI * 0.18, localCta);
+      rotX = THREE.MathUtils.lerp(start.rotX, start.rotX - 0.04, localCta);
+      posX = THREE.MathUtils.lerp(start.posX, start.posX - 0.02, localCta);
+      posY = THREE.MathUtils.lerp(start.posY, start.posY + 0.09, localCta);
+      posZ = THREE.MathUtils.lerp(start.posZ, start.posZ - 0.30, localCta);
+      scale = THREE.MathUtils.lerp(start.scale, start.scale - 0.25, localCta);
     } else {
-      const local = smoothstep((t - 0.88) / 0.12);
-      rotY = Math.PI * (1.76 + local * 0.18);
-      rotX = 0.06 - local * 0.04;
-      posX = 0.02 - local * 0.02;
-      posY = BASE_RIDE_HEIGHT + 0.01 + local * 0.09;
-      posZ = 0.26 - local * 0.3;
-      scale = 1.5 - local * 0.25;
+      // automatic lerp between start and end pose for all other segments
+      posX = THREE.MathUtils.lerp(start.posX, end.posX, local);
+      // subtle oscillation added on top for life
+      const baseY = THREE.MathUtils.lerp(start.posY, end.posY, local);
+      const osc = heroOscillation * (seg === 0 ? 1 : 0.35) + (seg === 1 ? Math.sin(elapsed * 1.4) * 0.014 : 0) + (seg === 3 ? Math.cos(elapsed * 24) * 0.01 * local : 0);
+      posY = baseY + osc;
+      posZ = THREE.MathUtils.lerp(start.posZ, end.posZ, local) + (seg === 3 ? Math.sin(elapsed * 17) * 0.005 * local : 0);
+      rotX = THREE.MathUtils.lerp(start.rotX, end.rotX, local);
+      rotY = THREE.MathUtils.lerp(start.rotY, end.rotY, local);
+      rotZ = THREE.MathUtils.lerp(start.rotZ, end.rotZ, local);
+      scale = THREE.MathUtils.lerp(start.scale, end.scale, local);
+      // subtle shake for track segment
+      if (seg === 3) {
+        const shake = local * 0.01;
+        posX += Math.sin(elapsed * 30) * shake;
+      }
     }
 
     groupRef.current.rotation.x = THREE.MathUtils.damp(groupRef.current.rotation.x, rotX, 4, delta);
@@ -294,6 +310,92 @@ function PorscheModel({ scrollProgress }) {
         distance={14}
       />
     </group>
+  );
+}
+
+function CarPositionGUI({ poses, onChange, activeIndex }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [selected, setSelected] = useState(0);
+  const [toast, setToast] = useState('');
+  useEffect(() => { setSelected(activeIndex); }, [activeIndex]);
+
+  const exportSettings = async () => {
+    const json = JSON.stringify(poses, null, 2);
+    try { await navigator.clipboard.writeText(json); setToast('Copied to clipboard'); } catch { setToast('Export ready'); }
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'car-positions.json'; a.click();
+    URL.revokeObjectURL(url);
+    setTimeout(() => setToast(''), 1800);
+  };
+  const copySection = async () => {
+    const json = JSON.stringify(poses[selected], null, 2);
+    try { await navigator.clipboard.writeText(json); setToast(`${poses[selected].id} copied`); setTimeout(()=>setToast(''),1500);} catch {}
+  };
+  if (collapsed) {
+    return (
+      <div className="car-gui car-gui-collapsed">
+        <button type="button" className="gui-toggle" onClick={() => setCollapsed(false)}>Car GUI ▸</button>
+      </div>
+    );
+  }
+  const p = poses[selected];
+  const fields = [
+    { key: 'posX', label: 'Pos X', min: -3, max: 3, step: 0.01 },
+    { key: 'posY', label: 'Pos Y', min: -1, max: 1.2, step: 0.01 },
+    { key: 'posZ', label: 'Pos Z', min: -3, max: 3, step: 0.01 },
+    { key: 'rotX', label: 'Rot X', min: -1, max: 1, step: 0.01 },
+    { key: 'rotY', label: 'Rot Y', min: 0, max: 6.283, step: 0.01 },
+    { key: 'rotZ', label: 'Rot Z', min: -1, max: 1, step: 0.01 },
+    { key: 'scale', label: 'Scale', min: 0.5, max: 2.5, step: 0.01 },
+  ];
+  return (
+    <div className="car-gui">
+      <div className="gui-header">
+        <span className="gui-title">Car Position GUI</span>
+        <div className="gui-header-actions">
+          <button type="button" className="gui-btn gui-btn-export" onClick={exportSettings}>Extract JSON</button>
+          <button type="button" className="gui-btn gui-btn-mini" onClick={copySection}>Copy section</button>
+          <button type="button" className="gui-btn gui-btn-mini" onClick={() => setCollapsed(true)}>—</button>
+        </div>
+      </div>
+      <div className="gui-tabs">
+        {poses.map((pose, i) => (
+          <button key={pose.id} type="button" className={`gui-tab ${i===selected ? 'active':''} ${i===activeIndex ? 'live':''}`} onClick={()=>setSelected(i)}>
+            {String(i+1).padStart(2,'0')} {pose.id}
+          </button>
+        ))}
+      </div>
+      <div className="gui-body">
+        <div className="gui-section-label">Editing: <b>{p.id}</b> {selected===activeIndex ? '● LIVE' : ''}</div>
+        {fields.map(f => (
+          <div key={f.key} className="gui-field">
+            <div className="gui-field-head">
+              <label>{f.label}</label>
+              <input
+                type="number"
+                step={f.step}
+                value={p[f.key]}
+                onChange={(e)=> onChange(selected, f.key, parseFloat(e.target.value)||0)}
+                className="gui-number"
+              />
+            </div>
+            <input
+              type="range"
+              min={f.min}
+              max={f.max}
+              step={f.step}
+              value={p[f.key]}
+              onChange={(e)=> onChange(selected, f.key, parseFloat(e.target.value))}
+              className="gui-range"
+            />
+          </div>
+        ))}
+        <div className="gui-hint">Movement automatic — values har section ke beech smoothstep se lerp hote hain.</div>
+      </div>
+      {toast ? <div className="gui-toast">{toast}</div> : null}
+    </div>
   );
 }
 
@@ -495,7 +597,7 @@ function CameraRig({ scrollProgress }) {
   return null;
 }
 
-function Scene({ scrollProgress }) {
+function Scene({ scrollProgress, carPoses }) {
   return (
     <>
       <color attach="background" args={['#050608']} />
@@ -503,7 +605,7 @@ function Scene({ scrollProgress }) {
       <Environment preset="night" />
       <SceneLighting scrollProgress={scrollProgress} />
       <CameraRig scrollProgress={scrollProgress} />
-      <PorscheModel scrollProgress={scrollProgress} />
+      <PorscheModel scrollProgress={scrollProgress} carPoses={carPoses} />
       <Atmosphere scrollProgress={scrollProgress} />
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, GROUND_Y, 0]} receiveShadow>
@@ -718,6 +820,10 @@ export default function App() {
   const scrollRef = useRef(null);
   const scrollProgress = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [carPoses, setCarPoses] = useState(() => DEFAULT_CAR_POSES.map(p=>({...p})));
+  const handlePoseChange = (idx, key, value) => {
+    setCarPoses(prev => prev.map((p,i)=> i===idx ? { ...p, [key]: value } : p));
+  };
 
   useEffect(() => {
     const element = scrollRef.current;
@@ -773,10 +879,12 @@ export default function App() {
           }}
         >
           <Suspense fallback={null}>
-            <Scene scrollProgress={scrollProgress} />
+            <Scene scrollProgress={scrollProgress} carPoses={carPoses} />
           </Suspense>
         </Canvas>
       </div>
+
+      <CarPositionGUI poses={carPoses} onChange={handlePoseChange} activeIndex={activeIndex} />
 
       <div className="vignette-layer" />
       <div className="mesh-gradient" />
