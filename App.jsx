@@ -219,6 +219,7 @@ function PorscheModel({ scrollProgress, carPoses }) {
     }
 
     const t = scrollProgress.current;
+    const elapsed = state.clock.elapsedTime;
     const poses = carPosesRef.current;
 
     let rotX = -0.02;
@@ -303,7 +304,7 @@ function PorscheModel({ scrollProgress, carPoses }) {
   );
 }
 
-function CarPositionGUI({ poses, onChange, activeIndex, onSave, onSelectSection }) {
+function CarPositionGUI({ poses, onChange, activeIndex, onSave, onSelectSection, onReset }) {
   const [collapsed, setCollapsed] = useState(false);
   const [selected, setSelected] = useState(0);
   const [toast, setToast] = useState('');
@@ -332,6 +333,11 @@ function CarPositionGUI({ poses, onChange, activeIndex, onSave, onSelectSection 
     setToast('Saved ✓');
     setTimeout(()=>setToast(''),1500);
   };
+  const handleReset = () => {
+    if (onReset) onReset();
+    setToast('Reset to default');
+    setTimeout(()=>setToast(''),1500);
+  };
   if (collapsed) {
     return (
       <div className="car-gui car-gui-collapsed">
@@ -355,6 +361,7 @@ function CarPositionGUI({ poses, onChange, activeIndex, onSave, onSelectSection 
         <span className="gui-title">Car Position GUI</span>
         <div className="gui-header-actions">
           <button type="button" className="gui-btn gui-btn-save" onClick={handleSave}>Save</button>
+          <button type="button" className="gui-btn gui-btn-mini" onClick={handleReset}>Reset</button>
           <button type="button" className="gui-btn gui-btn-export" onClick={exportSettings}>Extract JSON</button>
           <button type="button" className="gui-btn gui-btn-mini" onClick={copySection}>Copy</button>
           <button type="button" className="gui-btn gui-btn-mini" onClick={() => setCollapsed(true)}>—</button>
@@ -839,6 +846,11 @@ export default function App() {
       window.localStorage.setItem('porsche_car_poses', JSON.stringify(poses));
     } catch {}
   };
+  const handleResetPoses = () => {
+    const defaults = DEFAULT_CAR_POSES.map(p=>({...p}));
+    setCarPoses(defaults);
+    try { window.localStorage.removeItem('porsche_car_poses'); } catch {}
+  };
 
   // ---- smooth scroll: target -> damp -> scrollProgress ----
   useEffect(() => {
@@ -912,7 +924,7 @@ export default function App() {
         </Canvas>
       </div>
 
-      <CarPositionGUI poses={carPoses} onChange={handlePoseChange} activeIndex={activeIndex} onSave={handleSavePoses} onSelectSection={scrollToSection} />
+      <CarPositionGUI poses={carPoses} onChange={handlePoseChange} activeIndex={activeIndex} onSave={handleSavePoses} onSelectSection={scrollToSection} onReset={handleResetPoses} />
 
       <div className="vignette-layer" />
       <div className="mesh-gradient" />
