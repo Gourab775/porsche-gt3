@@ -724,8 +724,11 @@ export default function App() {
   const targetProgress = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const carPoses = DEFAULT_CAR_POSES;
+  const isAnimatingRef = useRef(false);
+  const activeIndexRef = useRef(activeIndex);
+  useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
 
-  // ---- ekdum smooth scroll + har section me thora lock ----
+  // ---- ekdum smooth scroll ----
   useEffect(() => {
     let raf = 0;
     const tick = () => {
@@ -746,6 +749,8 @@ export default function App() {
     }
 
     const updateFromScroll = () => {
+      // lock section while animation is running — never skip
+      if (isAnimatingRef.current) return;
       const maxScroll = element.scrollHeight - element.clientHeight;
       const progress = maxScroll > 0 ? element.scrollTop / maxScroll : 0;
       targetProgress.current = THREE.MathUtils.clamp(progress, 0, 1);
@@ -761,6 +766,7 @@ export default function App() {
   }, []);
 
   const scrollToSection = (index) => {
+    if (isAnimatingRef.current) return;
     const element = scrollRef.current;
     if (!element) {
       return;
@@ -770,6 +776,7 @@ export default function App() {
     const duration = 1250;
     const startTime = performance.now();
     const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    isAnimatingRef.current = true;
     const animate = (now) => {
       const elapsed = now - startTime;
       const p = Math.min(elapsed / duration, 1);
@@ -777,28 +784,26 @@ export default function App() {
       element.scrollTop = startTop + (targetTop - startTop) * eased;
       const maxScroll = element.scrollHeight - element.clientHeight;
       if (maxScroll > 0) targetProgress.current = THREE.MathUtils.clamp(element.scrollTop / maxScroll, 0, 1);
-      if (p < 1) requestAnimationFrame(animate);
+      if (p < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // keep lock a bit more so viewer sees section, total lock ~1500ms already via wheel handler, but also ensure unlock after animation
+        window.setTimeout(() => { isAnimatingRef.current = false; }, 250);
+      }
     };
     requestAnimationFrame(animate);
   };
 
-  // section-by-section lock — jitna bhi tez scroll karo ek hi section, har section pe wait
-  const isAnimatingRef = useRef(false);
-  const activeIndexRef = useRef(activeIndex);
-  useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
+  // section-by-section lock — animation complete hone tak next section block, rapid inputs ignore
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return undefined;
     let touchStartY = 0;
-    const lockMs = 1500;
     const go = (dir) => {
-      if (isAnimatingRef.current) return;
       const cur = activeIndexRef.current;
       const nxt = Math.min(SECTION_COUNT - 1, Math.max(0, cur + dir));
       if (nxt === cur) return;
-      isAnimatingRef.current = true;
       scrollToSection(nxt);
-      window.setTimeout(() => { isAnimatingRef.current = false; }, lockMs);
     };
     const onWheel = (e) => {
       e.preventDefault();
