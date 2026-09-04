@@ -765,11 +765,21 @@ export default function App() {
     if (!element) {
       return;
     }
-
-    const top = index * window.innerHeight;
-    element.scrollTo({ top, behavior: 'smooth' });
-    const maxScroll = element.scrollHeight - element.clientHeight;
-    if (maxScroll > 0) targetProgress.current = THREE.MathUtils.clamp(top / maxScroll, 0, 1);
+    const startTop = element.scrollTop;
+    const targetTop = index * window.innerHeight;
+    const duration = 1250;
+    const startTime = performance.now();
+    const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const animate = (now) => {
+      const elapsed = now - startTime;
+      const p = Math.min(elapsed / duration, 1);
+      const eased = easeInOutCubic(p);
+      element.scrollTop = startTop + (targetTop - startTop) * eased;
+      const maxScroll = element.scrollHeight - element.clientHeight;
+      if (maxScroll > 0) targetProgress.current = THREE.MathUtils.clamp(element.scrollTop / maxScroll, 0, 1);
+      if (p < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
   };
 
   // section-by-section lock — jitna bhi tez scroll karo ek hi section, har section pe wait
