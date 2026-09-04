@@ -219,19 +219,17 @@ function PorscheModel({ scrollProgress, carPoses }) {
     }
 
     const t = scrollProgress.current;
-    const elapsed = state.clock.elapsedTime;
-    const heroOscillation = (Math.sin(elapsed * 0.9) + 1) * 0.012;
     const poses = carPosesRef.current;
 
     let rotX = -0.02;
     let rotY = Math.PI * 0.12;
     let rotZ = 0;
     let posX = 0;
-    let posY = BASE_RIDE_HEIGHT + heroOscillation;
+    let posY = BASE_RIDE_HEIGHT;
     let posZ = 0;
     let scale = 1;
 
-    // ---- GUI-driven automatic movement: lerp between section poses ----
+    // ---- GUI-driven automatic movement: lerp between section poses (breathing OFF) ----
     const thresholds = CAR_THRESHOLDS;
     let seg = 0;
     for (let i = 0; i < thresholds.length - 1; i += 1) {
@@ -255,22 +253,14 @@ function PorscheModel({ scrollProgress, carPoses }) {
       posZ = THREE.MathUtils.lerp(start.posZ, start.posZ - 0.30, localCta);
       scale = THREE.MathUtils.lerp(start.scale, start.scale - 0.25, localCta);
     } else {
-      // automatic lerp between start and end pose for all other segments
+      // automatic lerp between start and end pose — no auto breathing/shake
       posX = THREE.MathUtils.lerp(start.posX, end.posX, local);
-      // subtle oscillation added on top for life
-      const baseY = THREE.MathUtils.lerp(start.posY, end.posY, local);
-      const osc = heroOscillation * (seg === 0 ? 1 : 0.35) + (seg === 1 ? Math.sin(elapsed * 1.4) * 0.014 : 0) + (seg === 3 ? Math.cos(elapsed * 24) * 0.01 * local : 0);
-      posY = baseY + osc;
-      posZ = THREE.MathUtils.lerp(start.posZ, end.posZ, local) + (seg === 3 ? Math.sin(elapsed * 17) * 0.005 * local : 0);
+      posY = THREE.MathUtils.lerp(start.posY, end.posY, local);
+      posZ = THREE.MathUtils.lerp(start.posZ, end.posZ, local);
       rotX = THREE.MathUtils.lerp(start.rotX, end.rotX, local);
       rotY = THREE.MathUtils.lerp(start.rotY, end.rotY, local);
       rotZ = THREE.MathUtils.lerp(start.rotZ, end.rotZ, local);
       scale = THREE.MathUtils.lerp(start.scale, end.scale, local);
-      // subtle shake for track segment
-      if (seg === 3) {
-        const shake = local * 0.01;
-        posX += Math.sin(elapsed * 30) * shake;
-      }
     }
 
     groupRef.current.rotation.x = THREE.MathUtils.damp(groupRef.current.rotation.x, rotX, 4, delta);
@@ -313,7 +303,7 @@ function PorscheModel({ scrollProgress, carPoses }) {
   );
 }
 
-function CarPositionGUI({ poses, onChange, activeIndex }) {
+function CarPositionGUI({ poses, onChange, activeIndex, onSave, onSelectSection }) {
   const [collapsed, setCollapsed] = useState(false);
   const [selected, setSelected] = useState(0);
   const [toast, setToast] = useState('');
@@ -332,6 +322,15 @@ function CarPositionGUI({ poses, onChange, activeIndex }) {
   const copySection = async () => {
     const json = JSON.stringify(poses[selected], null, 2);
     try { await navigator.clipboard.writeText(json); setToast(`${poses[selected].id} copied`); setTimeout(()=>setToast(''),1500);} catch {}
+  };
+  const handleTabClick = (i) => {
+    setSelected(i);
+    if (onSelectSection) onSelectSection(i);
+  };
+  const handleSave = () => {
+    if (onSave) onSave(poses);
+    setToast('Saved ✓');
+    setTimeout(()=>setToast(''),1500);
   };
   if (collapsed) {
     return (
@@ -355,14 +354,15 @@ function CarPositionGUI({ poses, onChange, activeIndex }) {
       <div className="gui-header">
         <span className="gui-title">Car Position GUI</span>
         <div className="gui-header-actions">
+          <button type="button" className="gui-btn gui-btn-save" onClick={handleSave}>Save</button>
           <button type="button" className="gui-btn gui-btn-export" onClick={exportSettings}>Extract JSON</button>
-          <button type="button" className="gui-btn gui-btn-mini" onClick={copySection}>Copy section</button>
+          <button type="button" className="gui-btn gui-btn-mini" onClick={copySection}>Copy</button>
           <button type="button" className="gui-btn gui-btn-mini" onClick={() => setCollapsed(true)}>—</button>
         </div>
       </div>
       <div className="gui-tabs">
         {poses.map((pose, i) => (
-          <button key={pose.id} type="button" className={`gui-tab ${i===selected ? 'active':''} ${i===activeIndex ? 'live':''}`} onClick={()=>setSelected(i)}>
+          <button key={pose.id} type="button" className={`gui-tab ${i===selected ? 'active':''} ${i===activeIndex ? 'live':''}`} onClick={()=>handleTabClick(i)}>
             {String(i+1).padStart(2,'0')} {pose.id}
           </button>
         ))}
@@ -819,11 +819,40 @@ function SectionPanel({ section, index, activeIndex, onReplay }) {
 export default function App() {
   const scrollRef = useRef(null);
   const scrollProgress = useRef(0);
+  const targetProgress = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [carPoses, setCarPoses] = useState(() => DEFAULT_CAR_POSES.map(p=>({...p})));
+  const [carPoses, setCarPoses] = useState(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? window.localStorage.getItem('porsche_car_poses') : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length === DEFAULT_CAR_POSES.length) return parsed;
+      }
+    } catch {}
+    return DEFAULT_CAR_POSES.map(p=>({...p}));
+  });
   const handlePoseChange = (idx, key, value) => {
     setCarPoses(prev => prev.map((p,i)=> i===idx ? { ...p, [key]: value } : p));
   };
+  const handleSavePoses = (poses) => {
+    try {
+      window.localStorage.setItem('porsche_car_poses', JSON.stringify(poses));
+    } catch {}
+  };
+
+  // ---- smooth scroll: target -> damp -> scrollProgress ----
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      scrollProgress.current = THREE.MathUtils.damp(scrollProgress.current, targetProgress.current, 4.2, 0.016);
+      if (Math.abs(scrollProgress.current - targetProgress.current) < 0.0005) scrollProgress.current = targetProgress.current;
+      const sectionIndex = Math.min(SECTION_COUNT - 1, Math.round(scrollProgress.current * (SECTION_COUNT - 1)));
+      setActiveIndex(prev => prev !== sectionIndex ? sectionIndex : prev);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   useEffect(() => {
     const element = scrollRef.current;
@@ -834,15 +863,11 @@ export default function App() {
     const updateFromScroll = () => {
       const maxScroll = element.scrollHeight - element.clientHeight;
       const progress = maxScroll > 0 ? element.scrollTop / maxScroll : 0;
-      scrollProgress.current = THREE.MathUtils.clamp(progress, 0, 1);
-      const sectionIndex = Math.min(
-        SECTION_COUNT - 1,
-        Math.round(scrollProgress.current * (SECTION_COUNT - 1)),
-      );
-      setActiveIndex(sectionIndex);
+      targetProgress.current = THREE.MathUtils.clamp(progress, 0, 1);
     };
 
     updateFromScroll();
+    scrollProgress.current = targetProgress.current;
     element.addEventListener('scroll', updateFromScroll, { passive: true });
 
     return () => {
@@ -858,6 +883,9 @@ export default function App() {
 
     const top = index * window.innerHeight;
     element.scrollTo({ top, behavior: 'smooth' });
+    // also update target immediately for snappy GUI -> website sync
+    const maxScroll = element.scrollHeight - element.clientHeight;
+    if (maxScroll > 0) targetProgress.current = THREE.MathUtils.clamp(top / maxScroll, 0, 1);
   };
 
   const replay = () => scrollToSection(0);
@@ -884,7 +912,7 @@ export default function App() {
         </Canvas>
       </div>
 
-      <CarPositionGUI poses={carPoses} onChange={handlePoseChange} activeIndex={activeIndex} />
+      <CarPositionGUI poses={carPoses} onChange={handlePoseChange} activeIndex={activeIndex} onSave={handleSavePoses} onSelectSection={scrollToSection} />
 
       <div className="vignette-layer" />
       <div className="mesh-gradient" />

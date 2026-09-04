@@ -395,8 +395,12 @@ a {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  scroll-snap-type: y mandatory;
+  scroll-snap-type: y proximity;
   scrollbar-width: none;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  will-change: scroll-position;
 }
 
 .scroll-frame::-webkit-scrollbar {
@@ -1008,6 +1012,11 @@ a {
 }
 .gui-btn-export {
   background: linear-gradient(90deg, #ff5a1f, #ff8848);
+  border-color: transparent;
+  color: #fff;
+}
+.gui-btn-save {
+  background: #22c55e;
   border-color: transparent;
   color: #fff;
 }
