@@ -780,7 +780,7 @@ export default function App() {
     const el = scrollRef.current;
     if (!el) return undefined;
     let touchStartY = 0;
-    const lockMs = 950;
+    const lockMs = 1000;
     const go = (dir) => {
       if (isAnimatingRef.current) return;
       const cur = activeIndexRef.current;
