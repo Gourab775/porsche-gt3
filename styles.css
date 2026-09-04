@@ -948,7 +948,7 @@ a {
   top: 78px;
   left: 14px;
   z-index: 25;
-  width: 330px;
+  width: 352px;
   max-height: calc(100vh - 92px);
   display: flex;
   flex-direction: column;
@@ -965,6 +965,9 @@ a {
   border: none;
   box-shadow: none;
   backdrop-filter: none;
+  display: flex;
+  gap: 6px;
+  align-items: center;
 }
 .gui-toggle {
   padding: 8px 14px;
@@ -986,6 +989,7 @@ a {
   padding: 10px 10px 8px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
   background: rgba(255,255,255,0.03);
+  flex-wrap: wrap;
 }
 .gui-title {
   font-family: 'Space Grotesk', sans-serif;
@@ -997,6 +1001,9 @@ a {
 .gui-header-actions {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 100%;
 }
 .gui-btn {
   padding: 6px 10px;

@@ -13,21 +13,21 @@ const GROUND_Y = -1.05;
 const TIRE_CONTACT_LIFT = 0.12;
 const BASE_RIDE_HEIGHT = 0.055;
 
-// ---- Car position thresholds & default poses for GUI (har section ke liye) ----
+// ---- Car position thresholds & default poses for GUI (har section ke liye) - small & smooth transitions ----
 const CAR_THRESHOLDS = [0, 0.18, 0.36, 0.56, 0.74, 0.88, 1.0];
 const DEFAULT_CAR_POSES = [
-  // hero  (t=0)
-  { id: 'hero', posX: 0.65, posY: 0.055, posZ: 0, rotX: -0.02, rotY: 0.314, rotZ: 0, scale: 1.0 },
+  // hero  (t=0) - centered, subtle
+  { id: 'hero', posX: 0.12, posY: 0.055, posZ: 0, rotX: -0.01, rotY: 0.35, rotZ: 0, scale: 1.02 },
   // performance (t=0.18)
-  { id: 'performance', posX: -0.15, posY: 0.067, posZ: 0, rotX: -0.02, rotY: 0.691, rotZ: 0, scale: 1.0 },
+  { id: 'performance', posX: -0.08, posY: 0.058, posZ: 0.02, rotX: -0.01, rotY: 0.70, rotZ: 0, scale: 1.05 },
   // aero (t=0.36)
-  { id: 'aero', posX: 0.4, posY: 0.095, posZ: 0, rotX: -0.02, rotY: 1.445, rotZ: 0, scale: 1.12 },
+  { id: 'aero', posX: 0.10, posY: 0.060, posZ: 0.03, rotX: -0.01, rotY: 1.05, rotZ: 0, scale: 1.08 },
   // track (t=0.56)
-  { id: 'track', posX: -0.25, posY: 0.135, posZ: 0.18, rotX: -0.02, rotY: 3.895, rotZ: 0, scale: 1.2 },
+  { id: 'track', posX: -0.07, posY: 0.060, posZ: 0.05, rotX: -0.01, rotY: 1.40, rotZ: 0, scale: 1.10 },
   // detail (t=0.74)
-  { id: 'detail', posX: -0.2, posY: 0.145, posZ: 0.14, rotX: 0.01, rotY: 4.585, rotZ: 0, scale: 1.25 },
-  // cta start (t=0.88)
-  { id: 'cta', posX: 0.02, posY: 0.065, posZ: 0.26, rotX: 0.06, rotY: 5.529, rotZ: 0, scale: 1.5 },
+  { id: 'detail', posX: 0.06, posY: 0.058, posZ: 0.04, rotX: 0.0, rotY: 1.75, rotZ: 0, scale: 1.12 },
+  // cta start (t=0.88) - still centered
+  { id: 'cta', posX: 0.02, posY: 0.060, posZ: 0.02, rotX: 0.0, rotY: 2.05, rotZ: 0, scale: 1.14 },
 ];
 
 const sections = [
@@ -244,17 +244,17 @@ function PorscheModel({ scrollProgress, carPoses }) {
     const start = poses[seg] || poses[0];
     const end = poses[Math.min(seg + 1, poses.length - 1)] || start;
 
-    // for last segment (cta) keep original delta-based motion so car doesn't freeze
+    // for last segment (cta) keep small delta so transition stays minimal
     if (seg === 5) {
       const localCta = smoothstep((t - 0.88) / 0.12);
-      rotY = THREE.MathUtils.lerp(start.rotY, start.rotY + Math.PI * 0.18, localCta);
-      rotX = THREE.MathUtils.lerp(start.rotX, start.rotX - 0.04, localCta);
-      posX = THREE.MathUtils.lerp(start.posX, start.posX - 0.02, localCta);
-      posY = THREE.MathUtils.lerp(start.posY, start.posY + 0.09, localCta);
-      posZ = THREE.MathUtils.lerp(start.posZ, start.posZ - 0.30, localCta);
-      scale = THREE.MathUtils.lerp(start.scale, start.scale - 0.25, localCta);
+      rotY = THREE.MathUtils.lerp(start.rotY, start.rotY + 0.22, localCta);
+      rotX = THREE.MathUtils.lerp(start.rotX, start.rotX - 0.01, localCta);
+      posX = THREE.MathUtils.lerp(start.posX, start.posX - 0.01, localCta);
+      posY = THREE.MathUtils.lerp(start.posY, start.posY + 0.015, localCta);
+      posZ = THREE.MathUtils.lerp(start.posZ, start.posZ - 0.04, localCta);
+      scale = THREE.MathUtils.lerp(start.scale, start.scale - 0.02, localCta);
     } else {
-      // automatic lerp between start and end pose — no auto breathing/shake
+      // automatic lerp between start and end pose — small & smooth, no breathing
       posX = THREE.MathUtils.lerp(start.posX, end.posX, local);
       posY = THREE.MathUtils.lerp(start.posY, end.posY, local);
       posZ = THREE.MathUtils.lerp(start.posZ, end.posZ, local);
@@ -264,13 +264,14 @@ function PorscheModel({ scrollProgress, carPoses }) {
       scale = THREE.MathUtils.lerp(start.scale, end.scale, local);
     }
 
-    groupRef.current.rotation.x = THREE.MathUtils.damp(groupRef.current.rotation.x, rotX, 4, delta);
-    groupRef.current.rotation.y = THREE.MathUtils.damp(groupRef.current.rotation.y, rotY, 4, delta);
-    groupRef.current.rotation.z = THREE.MathUtils.damp(groupRef.current.rotation.z, rotZ, 4, delta);
-    groupRef.current.position.x = THREE.MathUtils.damp(groupRef.current.position.x, posX, 4.5, delta);
-    groupRef.current.position.y = THREE.MathUtils.damp(groupRef.current.position.y, posY, 4.5, delta);
-    groupRef.current.position.z = THREE.MathUtils.damp(groupRef.current.position.z, posZ, 4.5, delta);
-    groupRef.current.scale.setScalar(THREE.MathUtils.damp(groupRef.current.scale.x, scale, 4, delta));
+    // small & smooth damp (lower lambda = smoother)
+    groupRef.current.rotation.x = THREE.MathUtils.damp(groupRef.current.rotation.x, rotX, 2.8, delta);
+    groupRef.current.rotation.y = THREE.MathUtils.damp(groupRef.current.rotation.y, rotY, 2.8, delta);
+    groupRef.current.rotation.z = THREE.MathUtils.damp(groupRef.current.rotation.z, rotZ, 2.8, delta);
+    groupRef.current.position.x = THREE.MathUtils.damp(groupRef.current.position.x, posX, 3.0, delta);
+    groupRef.current.position.y = THREE.MathUtils.damp(groupRef.current.position.y, posY, 3.0, delta);
+    groupRef.current.position.z = THREE.MathUtils.damp(groupRef.current.position.z, posZ, 3.0, delta);
+    groupRef.current.scale.setScalar(THREE.MathUtils.damp(groupRef.current.scale.x, scale, 3.0, delta));
 
     if (sweepLightRef.current) {
       const activeSweep = t > 0.3 && t < 0.62;
@@ -838,10 +839,15 @@ export default function App() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [carPoses, setCarPoses] = useState(() => {
     try {
-      const saved = typeof window !== 'undefined' ? window.localStorage.getItem('porsche_car_poses') : null;
+      const saved = typeof window !== 'undefined' ? window.localStorage.getItem('porsche_car_poses_v2') : null;
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length === DEFAULT_CAR_POSES.length) return parsed;
+      }
+      // fallback: check old key and ignore if large transitions
+      const old = typeof window !== 'undefined' ? window.localStorage.getItem('porsche_car_poses') : null;
+      if (old) {
+        try { window.localStorage.removeItem('porsche_car_poses'); } catch {}
       }
     } catch {}
     return DEFAULT_CAR_POSES.map(p=>({...p}));
@@ -851,20 +857,20 @@ export default function App() {
   };
   const handleSavePoses = (poses) => {
     try {
-      window.localStorage.setItem('porsche_car_poses', JSON.stringify(poses));
+      window.localStorage.setItem('porsche_car_poses_v2', JSON.stringify(poses));
     } catch {}
   };
   const handleResetPoses = () => {
     const defaults = DEFAULT_CAR_POSES.map(p=>({...p}));
     setCarPoses(defaults);
-    try { window.localStorage.removeItem('porsche_car_poses'); } catch {}
+    try { window.localStorage.removeItem('porsche_car_poses_v2'); window.localStorage.removeItem('porsche_car_poses'); } catch {}
   };
 
-  // ---- smooth scroll: target -> damp -> scrollProgress ----
+  // ---- smooth small scroll: slower damp for minimal transition ----
   useEffect(() => {
     let raf = 0;
     const tick = () => {
-      scrollProgress.current = THREE.MathUtils.damp(scrollProgress.current, targetProgress.current, 4.2, 0.016);
+      scrollProgress.current = THREE.MathUtils.damp(scrollProgress.current, targetProgress.current, 2.9, 0.016);
       if (Math.abs(scrollProgress.current - targetProgress.current) < 0.0005) scrollProgress.current = targetProgress.current;
       const sectionIndex = Math.min(SECTION_COUNT - 1, Math.round(scrollProgress.current * (SECTION_COUNT - 1)));
       setActiveIndex(prev => prev !== sectionIndex ? sectionIndex : prev);
