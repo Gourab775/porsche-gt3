@@ -760,33 +760,6 @@ export default function App() {
     };
   }, []);
 
-  // har section pe thora pause — wheel ko 750ms tak roko taki viewer dekh sake
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return undefined;
-    let lastSnap = 0;
-    let isPaused = false;
-    const onWheel = (e) => {
-      const now = Date.now();
-      if (isPaused && now - lastSnap < 800) {
-        e.preventDefault();
-      }
-    };
-    const onScroll = () => {
-      lastSnap = Date.now();
-      isPaused = true;
-      window.clearTimeout(onScroll._t);
-      onScroll._t = window.setTimeout(() => { isPaused = false; }, 800);
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      el.removeEventListener('wheel', onWheel);
-      el.removeEventListener('scroll', onScroll);
-      window.clearTimeout(onScroll._t);
-    };
-  }, [activeIndex]);
-
   const scrollToSection = (index) => {
     const element = scrollRef.current;
     if (!element) {
@@ -795,10 +768,56 @@ export default function App() {
 
     const top = index * window.innerHeight;
     element.scrollTo({ top, behavior: 'smooth' });
-    // also update target immediately for snappy GUI -> website sync
     const maxScroll = element.scrollHeight - element.clientHeight;
     if (maxScroll > 0) targetProgress.current = THREE.MathUtils.clamp(top / maxScroll, 0, 1);
   };
+
+  // section-by-section lock — jitna bhi tez scroll karo ek hi section, har section pe wait
+  const isAnimatingRef = useRef(false);
+  const activeIndexRef = useRef(activeIndex);
+  useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    let touchStartY = 0;
+    const lockMs = 950;
+    const go = (dir) => {
+      if (isAnimatingRef.current) return;
+      const cur = activeIndexRef.current;
+      const nxt = Math.min(SECTION_COUNT - 1, Math.max(0, cur + dir));
+      if (nxt === cur) return;
+      isAnimatingRef.current = true;
+      scrollToSection(nxt);
+      window.setTimeout(() => { isAnimatingRef.current = false; }, lockMs);
+    };
+    const onWheel = (e) => {
+      e.preventDefault();
+      if (isAnimatingRef.current) return;
+      const dir = Math.sign(e.deltaY);
+      if (dir !== 0) go(dir);
+    };
+    const onTouchStart = (e) => { touchStartY = e.touches[0].clientY; };
+    const onTouchEnd = (e) => {
+      const dy = touchStartY - e.changedTouches[0].clientY;
+      if (Math.abs(dy) < 28) return;
+      if (isAnimatingRef.current) return;
+      go(Math.sign(dy));
+    };
+    const onKey = (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); go(1); }
+      if (e.key === 'ArrowUp' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+    window.addEventListener('keydown', onKey);
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, []);
 
   const replay = () => scrollToSection(0);
 
