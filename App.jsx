@@ -13,21 +13,15 @@ const GROUND_Y = -1.05;
 const TIRE_CONTACT_LIFT = 0.12;
 const BASE_RIDE_HEIGHT = 0.055;
 
-// ---- Car position thresholds & default poses for GUI (har section ke liye) - small & smooth transitions ----
+// ---- Final exact positions from C:\D\car-positions.json ----
 const CAR_THRESHOLDS = [0, 0.18, 0.36, 0.56, 0.74, 0.88, 1.0];
 const DEFAULT_CAR_POSES = [
-  // hero  (t=0) - centered, subtle
-  { id: 'hero', posX: 0.12, posY: 0.055, posZ: 0, rotX: -0.01, rotY: 0.35, rotZ: 0, scale: 1.02 },
-  // performance (t=0.18)
-  { id: 'performance', posX: -0.08, posY: 0.058, posZ: 0.02, rotX: -0.01, rotY: 0.70, rotZ: 0, scale: 1.05 },
-  // aero (t=0.36)
-  { id: 'aero', posX: 0.10, posY: 0.060, posZ: 0.03, rotX: -0.01, rotY: 1.05, rotZ: 0, scale: 1.08 },
-  // track (t=0.56)
-  { id: 'track', posX: -0.07, posY: 0.060, posZ: 0.05, rotX: -0.01, rotY: 1.40, rotZ: 0, scale: 1.10 },
-  // detail (t=0.74)
-  { id: 'detail', posX: 0.06, posY: 0.058, posZ: 0.04, rotX: 0.0, rotY: 1.75, rotZ: 0, scale: 1.12 },
-  // cta start (t=0.88) - still centered
-  { id: 'cta', posX: 0.02, posY: 0.060, posZ: 0.02, rotX: 0.0, rotY: 2.05, rotZ: 0, scale: 1.14 },
+  { id: 'hero', posX: 0.28, posY: 0.54, posZ: -0.58, rotX: 0.04, rotY: 0.74, rotZ: -0.01, scale: 1.26 },
+  { id: 'performance', posX: -0.47, posY: 0.058, posZ: -0.6, rotX: 0, rotY: 1.89, rotZ: 0, scale: 1.24 },
+  { id: 'aero', posX: 0.59, posY: 0.38, posZ: -2.31, rotX: 0, rotY: 0, rotZ: 0, scale: 1.25 },
+  { id: 'track', posX: 0.24, posY: 0.25, posZ: -1.7, rotX: -0.01, rotY: 3.06, rotZ: 0, scale: 1.17 },
+  { id: 'detail', posX: -1.52, posY: 0.92, posZ: 1.65, rotX: -0.26, rotY: 1.54, rotZ: 0, scale: 1.57 },
+  { id: 'cta', posX: -0.01, posY: 0.24, posZ: -1.16, rotX: 0, rotY: 1.44, rotZ: 0, scale: 0.84 },
 ];
 
 const sections = [
@@ -302,117 +296,6 @@ function PorscheModel({ scrollProgress, carPoses }) {
         distance={14}
       />
     </group>
-  );
-}
-
-function CarPositionGUI({ poses, onChange, activeIndex, onSave, onSelectSection, onReset }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const [visible, setVisible] = useState(true);
-  const [selected, setSelected] = useState(0);
-  const [toast, setToast] = useState('');
-  useEffect(() => { setSelected(activeIndex); }, [activeIndex]);
-
-  const exportSettings = async () => {
-    const json = JSON.stringify(poses, null, 2);
-    try { await navigator.clipboard.writeText(json); setToast('Copied to clipboard'); } catch { setToast('Export ready'); }
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'car-positions.json'; a.click();
-    URL.revokeObjectURL(url);
-    setTimeout(() => setToast(''), 1800);
-  };
-  const copySection = async () => {
-    const json = JSON.stringify(poses[selected], null, 2);
-    try { await navigator.clipboard.writeText(json); setToast(`${poses[selected].id} copied`); setTimeout(()=>setToast(''),1500);} catch {}
-  };
-  const handleTabClick = (i) => {
-    setSelected(i);
-    if (onSelectSection) onSelectSection(i);
-  };
-  const handleSave = () => {
-    if (onSave) onSave(poses);
-    setToast('Saved ✓');
-    setTimeout(()=>setToast(''),1500);
-  };
-  const handleReset = () => {
-    if (onReset) onReset();
-    setToast('Reset to default');
-    setTimeout(()=>setToast(''),1500);
-  };
-  if (!visible) {
-    return (
-      <button type="button" className="gui-open-fab" onClick={() => setVisible(true)}>Open GUI</button>
-    );
-  }
-  if (collapsed) {
-    return (
-      <div className="car-gui car-gui-collapsed">
-        <button type="button" className="gui-toggle" onClick={() => setCollapsed(false)}>Car GUI ▸</button>
-        <button type="button" className="gui-close" onClick={() => setVisible(false)} title="Close">✕</button>
-      </div>
-    );
-  }
-  const p = poses[selected];
-  const fields = [
-    { key: 'posX', label: 'Pos X', min: -3, max: 3, step: 0.01 },
-    { key: 'posY', label: 'Pos Y', min: -1, max: 1.2, step: 0.01 },
-    { key: 'posZ', label: 'Pos Z', min: -3, max: 3, step: 0.01 },
-    { key: 'rotX', label: 'Rot X', min: -1, max: 1, step: 0.01 },
-    { key: 'rotY', label: 'Rot Y', min: 0, max: 6.283, step: 0.01 },
-    { key: 'rotZ', label: 'Rot Z', min: -1, max: 1, step: 0.01 },
-    { key: 'scale', label: 'Scale', min: 0.5, max: 2.5, step: 0.01 },
-  ];
-  return (
-    <div className="car-gui">
-      <button type="button" className="gui-close-abs" onClick={() => setVisible(false)} title="Close GUI">✕</button>
-      <div className="gui-header">
-        <span className="gui-title">Car Position GUI</span>
-        <div className="gui-header-actions">
-          <button type="button" className="gui-btn gui-btn-save" onClick={handleSave}>Save</button>
-          <button type="button" className="gui-btn gui-btn-mini" onClick={handleReset}>Reset</button>
-          <button type="button" className="gui-btn gui-btn-export" onClick={exportSettings}>Extract JSON</button>
-          <button type="button" className="gui-btn gui-btn-mini" onClick={copySection}>Copy</button>
-          <button type="button" className="gui-btn gui-btn-mini" onClick={() => setCollapsed(true)}>—</button>
-          <button type="button" className="gui-btn gui-btn-close" onClick={() => setVisible(false)} title="Close GUI">✕ Close</button>
-        </div>
-      </div>
-      <div className="gui-tabs">
-        {poses.map((pose, i) => (
-          <button key={pose.id} type="button" className={`gui-tab ${i===selected ? 'active':''} ${i===activeIndex ? 'live':''}`} onClick={()=>handleTabClick(i)}>
-            {String(i+1).padStart(2,'0')} {pose.id}
-          </button>
-        ))}
-      </div>
-      <div className="gui-body">
-        <div className="gui-section-label">Editing: <b>{p.id}</b> {selected===activeIndex ? '● LIVE' : ''}</div>
-        {fields.map(f => (
-          <div key={f.key} className="gui-field">
-            <div className="gui-field-head">
-              <label>{f.label}</label>
-              <input
-                type="number"
-                step={f.step}
-                value={p[f.key]}
-                onChange={(e)=> onChange(selected, f.key, parseFloat(e.target.value)||0)}
-                className="gui-number"
-              />
-            </div>
-            <input
-              type="range"
-              min={f.min}
-              max={f.max}
-              step={f.step}
-              value={p[f.key]}
-              onChange={(e)=> onChange(selected, f.key, parseFloat(e.target.value))}
-              className="gui-range"
-            />
-          </div>
-        ))}
-        <div className="gui-hint">Movement automatic — values har section ke beech smoothstep se lerp hote hain.</div>
-      </div>
-      {toast ? <div className="gui-toast">{toast}</div> : null}
-    </div>
   );
 }
 
@@ -840,40 +723,13 @@ export default function App() {
   const scrollProgress = useRef(0);
   const targetProgress = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [carPoses, setCarPoses] = useState(() => {
-    try {
-      const saved = typeof window !== 'undefined' ? window.localStorage.getItem('porsche_car_poses_v2') : null;
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length === DEFAULT_CAR_POSES.length) return parsed;
-      }
-      // fallback: check old key and ignore if large transitions
-      const old = typeof window !== 'undefined' ? window.localStorage.getItem('porsche_car_poses') : null;
-      if (old) {
-        try { window.localStorage.removeItem('porsche_car_poses'); } catch {}
-      }
-    } catch {}
-    return DEFAULT_CAR_POSES.map(p=>({...p}));
-  });
-  const handlePoseChange = (idx, key, value) => {
-    setCarPoses(prev => prev.map((p,i)=> i===idx ? { ...p, [key]: value } : p));
-  };
-  const handleSavePoses = (poses) => {
-    try {
-      window.localStorage.setItem('porsche_car_poses_v2', JSON.stringify(poses));
-    } catch {}
-  };
-  const handleResetPoses = () => {
-    const defaults = DEFAULT_CAR_POSES.map(p=>({...p}));
-    setCarPoses(defaults);
-    try { window.localStorage.removeItem('porsche_car_poses_v2'); window.localStorage.removeItem('porsche_car_poses'); } catch {}
-  };
+  const carPoses = DEFAULT_CAR_POSES;
 
-  // ---- smooth small scroll: slower damp for minimal transition ----
+  // ---- ekdum smooth scroll + har section me thora lock ----
   useEffect(() => {
     let raf = 0;
     const tick = () => {
-      scrollProgress.current = THREE.MathUtils.damp(scrollProgress.current, targetProgress.current, 2.9, 0.016);
+      scrollProgress.current = THREE.MathUtils.damp(scrollProgress.current, targetProgress.current, 2.2, 0.016);
       if (Math.abs(scrollProgress.current - targetProgress.current) < 0.0005) scrollProgress.current = targetProgress.current;
       const sectionIndex = Math.min(SECTION_COUNT - 1, Math.round(scrollProgress.current * (SECTION_COUNT - 1)));
       setActiveIndex(prev => prev !== sectionIndex ? sectionIndex : prev);
@@ -968,7 +824,6 @@ export default function App() {
         </Canvas>
       </div>
 
-      <CarPositionGUI poses={carPoses} onChange={handlePoseChange} activeIndex={activeIndex} onSave={handleSavePoses} onSelectSection={scrollToSection} onReset={handleResetPoses} />
 
       <div className="vignette-layer" />
       <div className="mesh-gradient" />
@@ -1001,5 +856,4 @@ export default function App() {
     </div>
   );
 }
-
 
