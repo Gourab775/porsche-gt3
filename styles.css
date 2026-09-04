@@ -1021,6 +1021,39 @@ a {
   color: #fff;
 }
 .gui-btn-mini { padding: 6px 8px; }
+.gui-btn-close {
+  background: rgba(255,60,60,0.92);
+  border-color: transparent;
+  color: #fff;
+}
+.gui-close {
+  margin-left: 6px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,60,60,0.92);
+  color: #fff;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+.gui-open-fab {
+  position: fixed;
+  top: 78px;
+  left: 14px;
+  z-index: 26;
+  padding: 8px 14px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(8,10,14,0.92);
+  color: #f5efe7;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+}
 .gui-tabs {
   display: flex;
   flex-wrap: wrap;

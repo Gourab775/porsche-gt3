@@ -306,6 +306,7 @@ function PorscheModel({ scrollProgress, carPoses }) {
 
 function CarPositionGUI({ poses, onChange, activeIndex, onSave, onSelectSection, onReset }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [visible, setVisible] = useState(true);
   const [selected, setSelected] = useState(0);
   const [toast, setToast] = useState('');
   useEffect(() => { setSelected(activeIndex); }, [activeIndex]);
@@ -338,10 +339,16 @@ function CarPositionGUI({ poses, onChange, activeIndex, onSave, onSelectSection,
     setToast('Reset to default');
     setTimeout(()=>setToast(''),1500);
   };
+  if (!visible) {
+    return (
+      <button type="button" className="gui-open-fab" onClick={() => setVisible(true)}>Open GUI</button>
+    );
+  }
   if (collapsed) {
     return (
       <div className="car-gui car-gui-collapsed">
         <button type="button" className="gui-toggle" onClick={() => setCollapsed(false)}>Car GUI ▸</button>
+        <button type="button" className="gui-close" onClick={() => setVisible(false)} title="Close">✕</button>
       </div>
     );
   }
@@ -365,6 +372,7 @@ function CarPositionGUI({ poses, onChange, activeIndex, onSave, onSelectSection,
           <button type="button" className="gui-btn gui-btn-export" onClick={exportSettings}>Extract JSON</button>
           <button type="button" className="gui-btn gui-btn-mini" onClick={copySection}>Copy</button>
           <button type="button" className="gui-btn gui-btn-mini" onClick={() => setCollapsed(true)}>—</button>
+          <button type="button" className="gui-btn gui-btn-close" onClick={() => setVisible(false)} title="Close GUI">✕ Close</button>
         </div>
       </div>
       <div className="gui-tabs">
