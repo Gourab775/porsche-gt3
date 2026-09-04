@@ -767,6 +767,33 @@ export default function App() {
     };
   }, []);
 
+  // har section pe thora pause taki viewer dekh sake — wheel ko 750ms tak roko
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    let lastSnap = 0;
+    let isPaused = false;
+    const onWheel = (e) => {
+      const now = Date.now();
+      if (isPaused && now - lastSnap < 750) {
+        e.preventDefault();
+      }
+    };
+    const onScrollEnd = () => {
+      lastSnap = Date.now();
+      isPaused = true;
+      window.clearTimeout(onScrollEnd._t);
+      onScrollEnd._t = window.setTimeout(() => { isPaused = false; }, 750);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    el.addEventListener('scroll', onScrollEnd, { passive: true });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('scroll', onScrollEnd);
+      window.clearTimeout(onScrollEnd._t);
+    };
+  }, [activeIndex]);
+
   const scrollToSection = (index) => {
     const element = scrollRef.current;
     if (!element) {
