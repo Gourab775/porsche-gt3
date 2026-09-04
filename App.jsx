@@ -725,8 +725,15 @@ export default function App() {
   const [activeIndex, setActiveIndex] = useState(0);
   const carPoses = DEFAULT_CAR_POSES;
   const isAnimatingRef = useRef(false);
+  const isFirstRef = useRef(true);
   const activeIndexRef = useRef(activeIndex);
   useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
+  useEffect(() => {
+    if (isFirstRef.current) { isFirstRef.current = false; return; }
+    isAnimatingRef.current = true;
+    const t = window.setTimeout(() => { isAnimatingRef.current = false; }, 2000);
+    return () => window.clearTimeout(t);
+  }, [activeIndex]);
 
   // ---- ekdum smooth scroll ----
   useEffect(() => {
@@ -776,7 +783,6 @@ export default function App() {
     const duration = 1250;
     const startTime = performance.now();
     const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-    isAnimatingRef.current = true;
     const animate = (now) => {
       const elapsed = now - startTime;
       const p = Math.min(elapsed / duration, 1);
@@ -786,9 +792,6 @@ export default function App() {
       if (maxScroll > 0) targetProgress.current = THREE.MathUtils.clamp(element.scrollTop / maxScroll, 0, 1);
       if (p < 1) {
         requestAnimationFrame(animate);
-      } else {
-        // thora aur wait — total ~1900ms (1250 + 650) taaki viewer dekh sake, wait ke time scroll input bilkul ignore
-        window.setTimeout(() => { isAnimatingRef.current = false; }, 650);
       }
     };
     requestAnimationFrame(animate);
