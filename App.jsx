@@ -725,15 +725,8 @@ export default function App() {
   const [activeIndex, setActiveIndex] = useState(0);
   const carPoses = DEFAULT_CAR_POSES;
   const isAnimatingRef = useRef(false);
-  const isFirstRef = useRef(true);
   const activeIndexRef = useRef(activeIndex);
   useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
-  useEffect(() => {
-    if (isFirstRef.current) { isFirstRef.current = false; return; }
-    isAnimatingRef.current = true;
-    const t = window.setTimeout(() => { isAnimatingRef.current = false; }, 1000);
-    return () => window.clearTimeout(t);
-  }, [activeIndex]);
 
   // ---- ekdum smooth scroll ----
   useEffect(() => {
@@ -778,6 +771,7 @@ export default function App() {
     if (!element) {
       return;
     }
+    isAnimatingRef.current = true;
     const startTop = element.scrollTop;
     const targetTop = index * window.innerHeight;
     const duration = 1250;
@@ -792,6 +786,9 @@ export default function App() {
       if (maxScroll > 0) targetProgress.current = THREE.MathUtils.clamp(element.scrollTop / maxScroll, 0, 1);
       if (p < 1) {
         requestAnimationFrame(animate);
+      } else {
+        // section exactly viewport pe aane ke baad 1 sec wait, is dauraan scroll input bilkul band
+        window.setTimeout(() => { isAnimatingRef.current = false; }, 1000);
       }
     };
     requestAnimationFrame(animate);
