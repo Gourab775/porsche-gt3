@@ -731,7 +731,7 @@ export default function App() {
   useEffect(() => {
     if (isFirstRef.current) { isFirstRef.current = false; return; }
     isAnimatingRef.current = true;
-    const t = window.setTimeout(() => { isAnimatingRef.current = false; }, 2000);
+    const t = window.setTimeout(() => { isAnimatingRef.current = false; }, 1000);
     return () => window.clearTimeout(t);
   }, [activeIndex]);
 
