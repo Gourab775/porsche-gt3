@@ -787,8 +787,8 @@ export default function App() {
       if (p < 1) {
         requestAnimationFrame(animate);
       } else {
-        // keep lock a bit more so viewer sees section, total lock ~1500ms already via wheel handler, but also ensure unlock after animation
-        window.setTimeout(() => { isAnimatingRef.current = false; }, 250);
+        // thora aur wait — total ~1900ms (1250 + 650) taaki viewer dekh sake, wait ke time scroll input bilkul ignore
+        window.setTimeout(() => { isAnimatingRef.current = false; }, 650);
       }
     };
     requestAnimationFrame(animate);
