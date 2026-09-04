@@ -244,24 +244,28 @@ function PorscheModel({ scrollProgress, carPoses }) {
     const start = poses[seg] || poses[0];
     const end = poses[Math.min(seg + 1, poses.length - 1)] || start;
 
-    // for last segment (cta) keep small delta so transition stays minimal
-    if (seg === 5) {
-      const localCta = smoothstep((t - 0.88) / 0.12);
-      rotY = THREE.MathUtils.lerp(start.rotY, start.rotY + 0.22, localCta);
-      rotX = THREE.MathUtils.lerp(start.rotX, start.rotX - 0.01, localCta);
-      posX = THREE.MathUtils.lerp(start.posX, start.posX - 0.01, localCta);
-      posY = THREE.MathUtils.lerp(start.posY, start.posY + 0.015, localCta);
-      posZ = THREE.MathUtils.lerp(start.posZ, start.posZ - 0.04, localCta);
-      scale = THREE.MathUtils.lerp(start.scale, start.scale - 0.02, localCta);
+    // car position save till details (t<0.88) then simple transition details->cta
+    const detailPose = poses[4];
+    const ctaPose = poses[5];
+    if (t < 0.88) {
+      // hold detail pose till details — GUI saved position
+      posX = detailPose.posX;
+      posY = detailPose.posY;
+      posZ = detailPose.posZ;
+      rotX = detailPose.rotX;
+      rotY = detailPose.rotY;
+      rotZ = detailPose.rotZ;
+      scale = detailPose.scale;
     } else {
-      // automatic lerp between start and end pose — small & smooth, no breathing
-      posX = THREE.MathUtils.lerp(start.posX, end.posX, local);
-      posY = THREE.MathUtils.lerp(start.posY, end.posY, local);
-      posZ = THREE.MathUtils.lerp(start.posZ, end.posZ, local);
-      rotX = THREE.MathUtils.lerp(start.rotX, end.rotX, local);
-      rotY = THREE.MathUtils.lerp(start.rotY, end.rotY, local);
-      rotZ = THREE.MathUtils.lerp(start.rotZ, end.rotZ, local);
-      scale = THREE.MathUtils.lerp(start.scale, end.scale, local);
+      // simple small transition only details->cta
+      const localCta = smoothstep((t - 0.88) / 0.12);
+      posX = THREE.MathUtils.lerp(detailPose.posX, ctaPose.posX, localCta);
+      posY = THREE.MathUtils.lerp(detailPose.posY, ctaPose.posY, localCta);
+      posZ = THREE.MathUtils.lerp(detailPose.posZ, ctaPose.posZ, localCta);
+      rotX = THREE.MathUtils.lerp(detailPose.rotX, ctaPose.rotX, localCta);
+      rotY = THREE.MathUtils.lerp(detailPose.rotY, ctaPose.rotY, localCta);
+      rotZ = THREE.MathUtils.lerp(detailPose.rotZ, ctaPose.rotZ, localCta);
+      scale = THREE.MathUtils.lerp(detailPose.scale, ctaPose.scale, localCta);
     }
 
     // small & smooth damp (lower lambda = smoother)
@@ -595,11 +599,13 @@ function CameraRig({ scrollProgress }) {
       z = 4.65 - local * 0.9;
       targetY = 0.06 - local * 0.28;
     } else {
+      // simple small transition details -> cta (no camera inside car)
       const local = smoothstep((progress - 0.88) / 0.12);
-      x = 0.9 - local * 0.6;
-      y = 0.41 + local * 1.4;
-      z = 4.80 + local * 9.5;
-      targetY = -0.5 + local * 0.25;
+      const startX = 0.9, startY = 0.41, startZ = 3.75, startTY = 0.06 - 0.28;
+      x = THREE.MathUtils.lerp(startX, 0.45, local);
+      y = THREE.MathUtils.lerp(startY, 0.72, local);
+      z = THREE.MathUtils.lerp(startZ, 4.85, local);
+      targetY = THREE.MathUtils.lerp(startTY, 0.16, local);
     }
 
     camera.position.x = THREE.MathUtils.damp(camera.position.x, x, 3.4, delta);
