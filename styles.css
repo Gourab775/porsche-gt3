@@ -1044,6 +1044,24 @@ a {
   font-size: 0.68rem;
   font-weight: 800;
 }
+.gui-close-abs {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,60,60,0.96);
+  color: #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
+}
 .gui-open-fab {
   position: fixed;
   top: 78px;

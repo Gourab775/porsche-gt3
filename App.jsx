@@ -369,6 +369,7 @@ function CarPositionGUI({ poses, onChange, activeIndex, onSave, onSelectSection,
   ];
   return (
     <div className="car-gui">
+      <button type="button" className="gui-close-abs" onClick={() => setVisible(false)} title="Close GUI">✕</button>
       <div className="gui-header">
         <span className="gui-title">Car Position GUI</span>
         <div className="gui-header-actions">
